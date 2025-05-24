@@ -10,9 +10,15 @@ import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import GroupsPage from './pages/GroupsPage';
 import GroupDetailPage from './pages/GroupDetailPage';
+import GroupProgrammePage from './pages/GroupProgrammePage';
 import ImportPage from './pages/ImportPage';
 import ProgrammesPage from './pages/ProgrammesPage';
 import SchedulerPage from './pages/SchedulerPage'; // Import the actual SchedulerPage
+import ActivitiesPage from './pages/ActivitiesPage'; // Add this import
+import RotaPage from './pages/RotaPage'; // Add RotaPage import
+import ActivityDetailPage from './pages/ActivityDetailPage';
+import FlightsPage from './pages/FlightsPage';
+import IndividualFlightPage from './pages/IndividualFlightPage';
 
 import './App.css';
 
@@ -75,11 +81,17 @@ function App() {
           <Route path="groups" element={<Outlet />}>
             <Route index element={<GroupsPage />} />
             <Route path=":groupId" element={<GroupDetailPage />} />
+            <Route path=":groupId/programme" element={<GroupProgrammePage />} />
           </Route>
           <Route path="programmes" element={<ProgrammesPage />} /> {/* This page links to the separate scheduler */}
+          <Route path="rota" element={<RotaPage />} /> {/* Add Rota route */}
+          <Route path="activities" element={<ActivitiesPage />} /> {/* Add this route */}
+          <Route path="flights" element={<FlightsPage />} /> {/* Add Flights route */}
+          <Route path="flights/:flightId" element={<IndividualFlightPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="activities/:activityId" element={<ActivityDetailPage />} />
           {/* Note: The scheduler route is no longer nested here if it needs a different layout */}
         </Route>
 

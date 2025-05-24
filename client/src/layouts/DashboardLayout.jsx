@@ -50,6 +50,24 @@ const ProgrammesIcon = ({ className = "w-6 h-6" }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5M12 15V9m0 0l-2.25 2.25M12 9l2.25 2.25" />
   </svg>
 );
+// Add Rota icon
+const RotaIcon = ({ className = "w-6 h-6" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+  </svg>
+);
+// Add Activities icon
+const ActivitiesIcon = ({ className = "w-6 h-6" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
+  </svg>
+);
+// Add Flights icon
+const FlightsIcon = ({ className = "w-6 h-6" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 19.5l19.5-7.5m0 0L12 4.5m9.75 7.5l-7.5 2.25m0 0l-2.25 7.5m2.25-7.5l-7.5-2.25" />
+  </svg>
+);
 // --- End of Icon Components ---
 
 
@@ -82,7 +100,10 @@ function DashboardLayout({ onLogout }) {
   const navItems = [
     { name: 'Overview', icon: HomeIcon, path: '/dashboard' },
     { name: 'Groups', icon: GroupsIcon, path: '/dashboard/groups' },
-    { name: 'Programmes', icon: ProgrammesIcon, path: '/dashboard/programmes' }, // Added Programmes
+    { name: 'Programmes', icon: ProgrammesIcon, path: '/dashboard/programmes' },
+    { name: 'Rota', icon: RotaIcon, path: '/dashboard/rota' },
+    { name: 'Activities', icon: ActivitiesIcon, path: '/dashboard/activities' },
+    { name: 'Flights', icon: FlightsIcon, path: '/dashboard/flights' },
     { name: 'Import', icon: ImportIcon, path: '/dashboard/import' },
     { name: 'Users', icon: UsersIcon, path: '/dashboard/users' },
     { name: 'Settings', icon: SettingsIcon, path: '/dashboard/settings' },

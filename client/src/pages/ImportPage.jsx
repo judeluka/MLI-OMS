@@ -111,6 +111,14 @@ function ImportPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [importSummary, setImportSummary] = useState(null);
 
+  // Add state for flights import
+  const [flightCsvData, setFlightCsvData] = useState('');
+  const [flightFileName, setFlightFileName] = useState('');
+  const [parsedFlights, setParsedFlights] = useState([]);
+  const [flightError, setFlightError] = useState('');
+  const [flightSuccessMessage, setFlightSuccessMessage] = useState('');
+  const [flightIsLoading, setFlightIsLoading] = useState(false);
+  const [flightImportSummary, setFlightImportSummary] = useState(null);
 
   const groupColumns = [
     { name: 'Agency', example: 'Agency Alpha', notes: 'Name of the agency. (Optional)' },
@@ -124,6 +132,13 @@ function ImportPage() {
     { name: 'Centre', example: 'Mountain View Centre', notes: 'Name of the centre. (Optional)' },
     { name: 'FlightArrivalTime', example: 'HH:MM (e.g., 14:00)', notes: 'Flight arrival time (24-hour format). (Optional)' },
     { name: 'FlightDepartureTime', example: 'HH:MM (e.g., 10:00)', notes: 'Flight departure time (24-hour format). (Optional)' },
+  ];
+
+  const flightColumns = [
+    { name: 'flight_type', example: 'arrival', notes: 'Type of flight: arrival or departure. (Mandatory)' },
+    { name: 'flight_date', example: '2024-07-01', notes: 'Date of flight (YYYY-MM-DD). (Mandatory)' },
+    { name: 'flight_time', example: '14:00', notes: 'Time of flight (24-hour, HH:MM). (Mandatory)' },
+    { name: 'flight_code', example: 'BA123', notes: 'Flight code. (Mandatory)' },
   ];
 
   const handleFileUpload = (event) => {
@@ -291,6 +306,134 @@ function ImportPage() {
     }
   };
 
+  // --- Flights Import Handlers ---
+  const handleFlightFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setFlightFileName(file.name);
+      setFlightError('');
+      setFlightSuccessMessage('');
+      setParsedFlights([]);
+      setFlightImportSummary(null);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFlightCsvData(e.target.result);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleFlightPaste = (event) => {
+    setFlightCsvData(event.target.value);
+    setFlightFileName('');
+    setFlightError('');
+    setFlightSuccessMessage('');
+    setParsedFlights([]);
+    setFlightImportSummary(null);
+  };
+
+  const processFlightImport = () => {
+    if (!flightCsvData.trim()) {
+      setFlightError('No CSV data provided. Please paste data or upload a file.');
+      return;
+    }
+    setFlightIsLoading(true);
+    setFlightError('');
+    setFlightSuccessMessage('');
+    setParsedFlights([]);
+    setFlightImportSummary(null);
+
+    Papa.parse(flightCsvData, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: false,
+      complete: (results) => {
+        setFlightIsLoading(false);
+        if (results.errors.length) {
+          setFlightError(`Error parsing CSV: ${results.errors.map(err => err.message).join(', ')}`);
+          return;
+        }
+        const providedHeaders = results.meta.fields.map(h => h.trim().toLowerCase());
+        const mandatoryHeaders = ['flight_type', 'flight_date', 'flight_time', 'flight_code'];
+        const missingMandatoryHeaders = mandatoryHeaders.filter(mh => !providedHeaders.includes(mh));
+        if (missingMandatoryHeaders.length > 0) {
+          setFlightError(`Missing required columns in CSV: ${missingMandatoryHeaders.join(', ')}. Please ensure your CSV headers include all mandatory columns (case-insensitive).`);
+          return;
+        }
+        let parsingErrors = [];
+        const validFlights = results.data.map((row, rowIndex) => {
+          const flight = {};
+          let rowHasError = false;
+          flightColumns.forEach(col => {
+            const csvHeader = Object.keys(row).find(k => k.trim().toLowerCase() === col.name.toLowerCase());
+            let value = csvHeader ? String(row[csvHeader]).trim() : null;
+            if (!value) {
+              parsingErrors.push(`Row ${rowIndex + 2}: Missing value for ${col.name}.`);
+              rowHasError = true;
+            }
+            flight[col.name] = value;
+          });
+          return rowHasError ? null : flight;
+        }).filter(flight => flight && flight.flight_type && flight.flight_date && flight.flight_time && flight.flight_code);
+        if (parsingErrors.length > 0) {
+          setFlightError(`Data parsing issues found:\n${parsingErrors.join('\n')}`);
+          return;
+        }
+        if (validFlights.length === 0) {
+          setFlightError('No valid flight data found after parsing. Check content, headers, and formats.');
+          return;
+        }
+        setParsedFlights(validFlights);
+        setFlightSuccessMessage(`Successfully parsed ${validFlights.length} flights. Review below and confirm to save to database.`);
+      },
+      error: (error) => {
+        setFlightIsLoading(false);
+        setFlightError(`Error parsing CSV: ${error.message}`);
+      }
+    });
+  };
+
+  const handleConfirmFlightImport = async () => {
+    if (parsedFlights.length === 0) {
+      setFlightError('No flights to import. Please process a CSV first.');
+      return;
+    }
+    setFlightIsLoading(true);
+    setFlightError('');
+    setFlightSuccessMessage('');
+    setFlightImportSummary(null);
+    let importedCount = 0;
+    let errors = [];
+    for (let i = 0; i < parsedFlights.length; i++) {
+      const flight = parsedFlights[i];
+      try {
+        const response = await fetch('http://localhost:5000/api/flights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(flight),
+        });
+        const result = await response.json();
+        if (response.ok && result.success) {
+          importedCount++;
+        } else {
+          errors.push({ row: i + 2, error: result.message || 'Unknown error' });
+        }
+      } catch (err) {
+        errors.push({ row: i + 2, error: err.message });
+      }
+    }
+    setFlightImportSummary({ importedCount, totalProcessed: parsedFlights.length, errors });
+    if (importedCount > 0) {
+      setFlightSuccessMessage(`Successfully imported ${importedCount} flights.`);
+      setParsedFlights([]);
+      setFlightCsvData('');
+      setFlightFileName('');
+    }
+    if (errors.length > 0) {
+      setFlightError(`Some flights could not be imported. See details below.`);
+    }
+    setFlightIsLoading(false);
+  };
 
   return (
     <div>
@@ -440,6 +583,135 @@ function ImportPage() {
           </div>
         </div>
       )}
+
+      {/* --- Flights Import Section --- */}
+      <div className="mt-16">
+        <h2 className="text-2xl font-semibold text-slate-800 mb-6">Import Flights</h2>
+        <div className="mb-8 p-6 bg-slate-50 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-slate-700 mb-3">CSV Import Instructions for Flights</h3>
+          <p className="text-sm text-slate-600 mb-4">
+            Prepare a CSV file (or paste CSV data). The first row must be the header row. 
+            Mandatory columns: <strong>flight_type, flight_date, flight_time, flight_code</strong>. Column names are case-insensitive.
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-sm text-slate-600 mb-4">
+            {flightColumns.map(col => (
+              <li key={col.name}>
+                <strong>{col.name}</strong>: {col.notes} (Example: <em>{col.example}</em>)
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-slate-500">
+            Dates must be in YYYY-MM-DD format. Times HH:MM (24-hour). All fields are mandatory.
+          </p>
+        </div>
+        {flightError && <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm" role="alert" dangerouslySetInnerHTML={{ __html: flightError.replace(/\n/g, '<br />') }}></div>}
+        {flightSuccessMessage && !flightError && <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md text-sm" role="alert">{flightSuccessMessage}</div>}
+        {flightImportSummary && (
+          <div className={`mb-4 p-4 border rounded-md text-sm ${flightImportSummary.errors && flightImportSummary.errors.length > 0 && flightImportSummary.importedCount < flightImportSummary.totalProcessed ? 'bg-yellow-50 border-yellow-300' : 'bg-sky-50 border-sky-300'}`}>
+            <h4 className="font-semibold text-slate-700 mb-2">Import Process Summary:</h4>
+            <p>Total flights in file: {flightImportSummary.totalProcessed}</p>
+            <p className="text-green-600">Successfully imported to database: {flightImportSummary.importedCount}</p>
+            {flightImportSummary.errors && flightImportSummary.errors.length > 0 && (
+              <>
+                <p className="mt-2 font-medium text-red-600">Errors encountered for specific rows ({flightImportSummary.errors.length}):</p>
+                <ul className="list-disc list-inside pl-5 text-red-500 text-xs max-h-32 overflow-y-auto">
+                  {flightImportSummary.errors.map((err, index) => (
+                    <li key={index}>Row {err.row}: {err.error}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <label htmlFor="flightCsvPasteArea" className="block text-sm font-medium text-slate-700 mb-2">
+              Paste CSV Data Here:
+            </label>
+            <textarea
+              id="flightCsvPasteArea"
+              rows="10"
+              className="w-full p-3 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm disabled:bg-slate-50"
+              placeholder={flightColumns.map(c => c.name).join(',')}
+              value={flightCsvData}
+              onChange={handleFlightPaste}
+              disabled={flightIsLoading && parsedFlights.length > 0}
+            ></textarea>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow flex flex-col justify-center items-center">
+            <label
+              htmlFor="flightCsvUpload"
+              className={`relative rounded-md font-medium text-sky-600 hover:text-sky-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-sky-500 ${flightIsLoading && parsedFlights.length > 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+            >
+              <div className="flex flex-col items-center justify-center p-6 border-2 border-slate-300 border-dashed rounded-md hover:border-sky-400 transition-colors">
+                <UploadCloudIcon className="mx-auto h-12 w-12 text-slate-400" />
+                <span className="mt-2 block text-sm text-slate-600">
+                  {flightFileName ? `Selected: ${flightFileName}` : 'Click to upload a CSV file'}
+                </span>
+                <span className="text-xs text-slate-500">(or drag and drop)</span>
+              </div>
+              <input id="flightCsvUpload" name="flightCsvUpload" type="file" className="sr-only" accept=".csv" onChange={handleFlightFileUpload} disabled={flightIsLoading && parsedFlights.length > 0} />
+            </label>
+            {flightFileName && <p className="mt-2 text-sm text-slate-500">File: {flightFileName}</p>}
+          </div>
+        </div>
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={processFlightImport}
+            disabled={flightIsLoading || !flightCsvData.trim() || parsedFlights.length > 0}
+            className="px-6 py-2.5 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {flightIsLoading && !parsedFlights.length ? (
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : null}
+            Process CSV & Preview
+          </button>
+        </div>
+        {parsedFlights.length > 0 && !flightError && (
+          <div className="mt-8 p-6 bg-slate-50 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-slate-700 mb-3">Parsed Flights Preview (First 5 Rows)</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-200">
+                  <tr>
+                    {flightColumns.map(col => <th key={col.name} className="px-4 py-2 text-left font-medium text-slate-600">{col.name}</th>)}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {parsedFlights.slice(0, 5).map((flight, index) => (
+                    <tr key={index}>
+                      {flightColumns.map(col => (
+                        <td key={`${index}-${col.name}`} className="px-4 py-2 whitespace-nowrap text-slate-700">
+                          {String(flight[col.name] === undefined || flight[col.name] === null ? '' : flight[col.name])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {parsedFlights.length > 5 && <p className="text-xs text-slate-500 mt-2">Showing first 5 of {parsedFlights.length} parsed flights.</p>}
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={handleConfirmFlightImport}
+                disabled={flightIsLoading}
+                className="px-6 py-2.5 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {flightIsLoading ? (
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : null}
+                {flightIsLoading ? 'Importing...' : `Confirm & Import ${parsedFlights.length} Flights`}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

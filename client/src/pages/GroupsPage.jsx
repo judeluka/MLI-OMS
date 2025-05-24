@@ -16,6 +16,24 @@ function GroupsPage() {
   const [isLoading, setIsLoading] = useState(true);   // Add loading state
   const [error, setError] = useState(null);           // Add error state
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+  const [selectedCentre, setSelectedCentre] = useState(''); // Add centre filter state
+
+  // Define table headers with a 'key' for sorting and a 'sortable' flag
+  // Keys should match the camelCase keys of the data objects in groupsData state
+  const headers = [
+    { label: 'Agency', key: 'agency', sortable: true },
+    { label: 'Group Name', key: 'groupName', sortable: true },
+    { label: 'Arrival Date', key: 'arrivalDate', sortable: true },
+    { label: 'Departure Date', key: 'departureDate', sortable: true },
+    { label: 'Student Allocation', key: 'studentAllocation', sortable: true, numeric: true },
+    { label: 'Leader Allocation', key: 'leaderAllocation', sortable: true, numeric: true },
+    { label: 'Student Bookings', key: 'studentBookings', sortable: true, numeric: true },
+    { label: 'Leader Bookings', key: 'leaderBookings', sortable: true, numeric: true },
+    { label: 'Centre', key: 'centre', sortable: true },
+    { label: 'Flight Arrival Time', key: 'flightArrivalTime', sortable: true },
+    { label: 'Flight Departure Time', key: 'flightDepartureTime', sortable: true },
+    { label: 'Actions', key: 'actions', sortable: false }
+  ];
 
   // Fetch groups data from the backend when the component mounts
   useEffect(() => {
@@ -50,28 +68,24 @@ function GroupsPage() {
     fetchGroups();
   }, []); // Empty dependency array means this effect runs once on mount
 
+  // Get unique centres for the filter dropdown
+  const uniqueCentres = useMemo(() => {
+    const centres = new Set(groupsData.map(group => group.centre).filter(Boolean));
+    return Array.from(centres).sort();
+  }, [groupsData]);
 
-  // Define table headers with a 'key' for sorting and a 'sortable' flag
-  // Keys should match the camelCase keys of the data objects in groupsData state
-  const headers = [
-    { label: 'Agency', key: 'agency', sortable: true },
-    { label: 'Group Name', key: 'groupName', sortable: true },
-    { label: 'Arrival Date', key: 'arrivalDate', sortable: true },
-    { label: 'Departure Date', key: 'departureDate', sortable: true },
-    { label: 'Student Allocation', key: 'studentAllocation', sortable: true, numeric: true },
-    { label: 'Leader Allocation', key: 'leaderAllocation', sortable: true, numeric: true },
-    { label: 'Student Bookings', key: 'studentBookings', sortable: true, numeric: true },
-    { label: 'Leader Bookings', key: 'leaderBookings', sortable: true, numeric: true },
-    { label: 'Centre', key: 'centre', sortable: true },
-    { label: 'Flight Arrival Time', key: 'flightArrivalTime', sortable: true },
-    { label: 'Flight Departure Time', key: 'flightDepartureTime', sortable: true },
-    { label: 'Actions', key: 'actions', sortable: false }
-  ];
+  // Filter and sort groups
+  const filteredAndSortedGroups = useMemo(() => {
+    let filteredItems = groupsData;
+    
+    // Apply centre filter
+    if (selectedCentre) {
+      filteredItems = filteredItems.filter(group => group.centre === selectedCentre);
+    }
 
-  const sortedGroups = useMemo(() => {
-    let sortableItems = [...groupsData];
+    // Apply sorting
     if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
+      filteredItems.sort((a, b) => {
         const valA = a[sortConfig.key];
         const valB = b[sortConfig.key];
         const isNumeric = headers.find(h => h.key === sortConfig.key)?.numeric;
@@ -90,8 +104,8 @@ function GroupsPage() {
         return sortConfig.direction === 'ascending' ? comparison : comparison * -1;
       });
     }
-    return sortableItems;
-  }, [groupsData, sortConfig, headers]);
+    return filteredItems;
+  }, [groupsData, sortConfig, selectedCentre, headers]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -147,6 +161,24 @@ function GroupsPage() {
   return (
     <div>
       <h2 className="text-2xl font-semibold text-slate-800 mb-6">Manage Groups</h2>
+      <div className="bg-white shadow-lg rounded-xl p-4 mb-4">
+        <div className="flex items-center space-x-4">
+          <label htmlFor="centreFilter" className="text-sm font-medium text-slate-700">Filter by Centre:</label>
+          <select
+            id="centreFilter"
+            value={selectedCentre}
+            onChange={(e) => setSelectedCentre(e.target.value)}
+            className="block w-48 pl-3 pr-10 py-2 text-base border-slate-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
+          >
+            <option value="">All Centres</option>
+            {uniqueCentres.map((centre) => (
+              <option key={centre} value={centre}>
+                {centre}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
       <div className="bg-white shadow-lg rounded-xl p-0">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -156,10 +188,10 @@ function GroupsPage() {
                   <th
                     key={header.key}
                     scope="col"
-                    className={`px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider ${header.sortable ? 'cursor-pointer hover:bg-slate-100' : ''}`}
+                    className={`px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider ${header.sortable ? 'cursor-pointer hover:bg-slate-100' : ''}`}
                     onClick={() => header.sortable && requestSort(header.key)}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       {header.label}
                       {header.sortable && (
                         <span className="ml-1">
@@ -172,8 +204,8 @@ function GroupsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {sortedGroups.length > 0 ? (
-                sortedGroups.map((group) => (
+              {filteredAndSortedGroups.length > 0 ? (
+                filteredAndSortedGroups.map((group) => (
                   <tr key={group.id} className="hover:bg-slate-50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{group.agency || 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-sky-600 hover:text-sky-800 hover:underline">
@@ -198,7 +230,7 @@ function GroupsPage() {
               ) : (
                 <tr>
                   <td colSpan={headers.length} className="px-6 py-12 text-center text-sm text-slate-500">
-                    No groups found in the database. You can import groups from the "Import" page.
+                    {selectedCentre ? `No groups found for centre "${selectedCentre}"` : 'No groups found in the database. You can import groups from the "Import" page.'}
                   </td>
                 </tr>
               )}

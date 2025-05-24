@@ -1,5 +1,5 @@
 // src/pages/GroupDetailPage.jsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
 // Placeholder for actual programme data from scheduler - this would also be fetched
@@ -23,49 +23,25 @@ const groupProgrammeData = {
     '2025-05-21-2-Evening': 'Cultural Dinner',
 };
 
-// Helper function to get sort icon
-const SortIcon = ({ direction }) => {
-  if (!direction) return <span className="ml-1 text-slate-400">↕</span>;
-  return direction === 'ascending' ? <span className="ml-1 text-slate-600">▲</span> : <span className="ml-1 text-slate-600">▼</span>;
-};
-
-// Helper to generate dates for the programme table
-// Ensures dates are treated as UTC to avoid timezone shifts from YYYY-MM-DD strings
-const getProgrammeDates = (arrivalStr, departureStr) => {
-    if (!arrivalStr || !departureStr) return [];
-    const dates = [];
-    
-    const startParts = arrivalStr.split('-');
-    const endParts = departureStr.split('-');
-
-    if (startParts.length !== 3 || endParts.length !== 3) return []; // Invalid format
-
-    let currentDate = new Date(Date.UTC(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2])));
-    let stopDate = new Date(Date.UTC(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2])));
-
-    if (isNaN(currentDate.getTime()) || isNaN(stopDate.getTime())) return []; // Invalid date objects
-
-    while (currentDate <= stopDate) {
-        dates.push(new Date(currentDate)); // Store as Date objects (which are UTC timestamps internally)
-        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-    }
-    return dates;
-};
-
-
 function GroupDetailPage() {
   const { groupId } = useParams();
-  const [groupInfo, setGroupInfo] = useState(null); // For fetched group details
-  // const [programmeDataForGroup, setProgrammeDataForGroup] = useState({}); // Future: fetch this too
-
+  const [groupInfo, setGroupInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  const [activeTab, setActiveTab] = useState('programme'); // Default to programme tab
+  // Add state for flight details form
+  const [flightDetails, setFlightDetails] = useState({
+    type: 'arrival', // 'arrival' or 'departure'
+    time: '',
+    flightCode: '',
+    airport: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  // Fetch group details when component mounts or groupId changes
+  // Fetch group details
   useEffect(() => {
-    const fetchGroupDetails = async () => {
+    const fetchGroupData = async () => {
       if (!groupId) {
         setError("Group ID is missing.");
         setIsLoading(false);
@@ -73,7 +49,7 @@ function GroupDetailPage() {
       }
       setIsLoading(true);
       setError(null);
-      setGroupInfo(null); // Reset previous data
+      setGroupInfo(null);
 
       try {
         // Fetch group metadata
@@ -89,22 +65,15 @@ function GroupDetailPage() {
           throw new Error(groupDataResult.message || 'Could not retrieve group details.');
         }
       } catch (err) {
-        console.error("Error fetching group details:", err);
+        console.error("Error fetching data:", err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchGroupDetails();
+    fetchGroupData();
   }, [groupId]);
-
-  // Memoize programme dates based on fetched groupInfo
-  const programmeDates = useMemo(() => 
-    groupInfo?.arrivalDate && groupInfo?.departureDate 
-        ? getProgrammeDates(groupInfo.arrivalDate, groupInfo.departureDate) 
-        : [], 
-  [groupInfo?.arrivalDate, groupInfo?.departureDate]);
 
   // Formats YYYY-MM-DD to DD MMM YYYY (UTC)
   const formatDateForDisplay = (dateString) => {
@@ -122,25 +91,56 @@ function GroupDetailPage() {
         return dateString;
     } catch (e) { return dateString; }
   };
-  
-  // Formats Date object to Weekday, DD Month YYYY (UTC)
-  const formatDateForProgrammeHeader = (dateObj) => {
-    if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
-    return dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }); // Shortened weekday
-  };
-  
-  // Formats Date object to YYYY-MM-DD (UTC)
-  const toYYYYMMDD = (dateObj) => {
-    if (!dateObj || isNaN(dateObj.getTime())) return null;
-    const month = `${dateObj.getUTCMonth() + 1}`.padStart(2, '0');
-    const day = `${dateObj.getUTCDate()}`.padStart(2, '0');
-    const year = dateObj.getUTCFullYear();
-    return `${year}-${month}-${day}`;
-  };
 
-  const programmeTableHeaders = [
-    "Date", "Breakfast", "Morning Activity", "Lunch", "Afternoon Activity", "Dinner", "Evening Activity"
-  ];
+  // Add function to handle flight details submission
+  const handleFlightDetailsSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/flight-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: flightDetails.type,
+          time: flightDetails.time,
+          flightCode: flightDetails.flightCode,
+          airport: flightDetails.airport
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save flight details');
+      }
+
+      // Update local state with new flight details
+      const updatedGroup = await response.json();
+      setGroupInfo(prev => ({
+        ...prev,
+        ...(flightDetails.type === 'arrival' 
+          ? { flightArrivalTime: flightDetails.time, flightArrivalCode: flightDetails.flightCode, flightArrivalAirport: flightDetails.airport }
+          : { flightDepartureTime: flightDetails.time, flightDepartureCode: flightDetails.flightCode, flightDepartureAirport: flightDetails.airport }
+        )
+      }));
+
+      // Reset form
+      setFlightDetails({
+        type: 'arrival',
+        time: '',
+        flightCode: '',
+        airport: ''
+      });
+    } catch (err) {
+      console.error('Error saving flight details:', err);
+      setSubmitError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="p-6 text-center text-slate-700">Loading group details...</div>;
@@ -166,77 +166,120 @@ function GroupDetailPage() {
         </Link>
       </div>
 
-      {/* Programme Content Directly Displayed (Removed Tab Navigation) */}
-      <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6">
-        <h3 className="text-xl font-semibold text-slate-700 mb-4">
-          Programme for {groupInfo.groupName}
-        </h3>
-        <p className="text-sm text-slate-500 mb-1">
-          Client: {groupInfo.agency || 'N/A'}
-        </p>
-        <p className="text-sm text-slate-500 mb-6">
-          Arrival: {formatDateForDisplay(groupInfo.arrivalDate)} | 
-          Departure: {formatDateForDisplay(groupInfo.departureDate)}
-        </p>
+      {/* Flight Details Form */}
+      <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6 mb-6">
+        <h3 className="text-xl font-semibold text-slate-700 mb-4">Flight Details</h3>
+        
+        <form onSubmit={handleFlightDetailsSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Flight Type
+              </label>
+              <select
+                value={flightDetails.type}
+                onChange={(e) => setFlightDetails(prev => ({ ...prev, type: e.target.value }))}
+                className="block w-full rounded-md border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm"
+              >
+                <option value="arrival">Arrival</option>
+                <option value="departure">Departure</option>
+              </select>
+            </div>
 
-        {programmeDates.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full w-full divide-y divide-slate-200 border border-slate-300 text-sm">
-              <thead className="bg-slate-100">
-                <tr>
-                  {programmeTableHeaders.map(header => (
-                    <th 
-                        key={header} 
-                        // Updated classes for header cells
-                        className={`px-3 py-2 text-xs font-semibold text-slate-600 uppercase tracking-wider border-r border-slate-300 last:border-r-0 
-                                    ${header === "Date" ? "text-left" : "text-center"}`}
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {programmeDates.map((date) => { 
-                  const dateStrYYYYMMDD = toYYYYMMDD(date); 
-                  const isArrivalDay = dateStrYYYYMMDD === groupInfo.arrivalDate;
-                  const isDepartureDay = dateStrYYYYMMDD === groupInfo.departureDate;
-                  
-                  let morningActivity = groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Morning`] || '-';
-                  let afternoonActivity = groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Afternoon`] || '-';
-                  let eveningActivity = groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Evening`] || '-';
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Time
+              </label>
+              <input
+                type="time"
+                value={flightDetails.time}
+                onChange={(e) => setFlightDetails(prev => ({ ...prev, time: e.target.value }))}
+                className="block w-full rounded-md border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm"
+                required
+              />
+            </div>
 
-                  if (isArrivalDay) {
-                      morningActivity = groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Arrival`] || 'Arrival Activities';
-                      if (!groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Afternoon`]) afternoonActivity = '-';
-                      if (!groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Evening`]) eveningActivity = '-';
-                  }
-                  if (isDepartureDay) {
-                      if (groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Departure`]) {
-                          morningActivity = groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Departure`];
-                          if (!groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Afternoon`]) afternoonActivity = '-';
-                          if (!groupProgrammeData[`${dateStrYYYYMMDD}-${groupId}-Evening`]) eveningActivity = '-';
-                      }
-                  }
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Flight Code
+              </label>
+              <input
+                type="text"
+                value={flightDetails.flightCode}
+                onChange={(e) => setFlightDetails(prev => ({ ...prev, flightCode: e.target.value }))}
+                placeholder="e.g., BA123"
+                className="block w-full rounded-md border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm"
+                required
+              />
+            </div>
 
-                  return (
-                    <tr key={dateStrYYYYMMDD} className={`${isArrivalDay ? 'bg-green-50' : isDepartureDay ? 'bg-red-50' : 'bg-white'} hover:bg-slate-50`}>
-                      <td className="px-3 py-2 whitespace-nowrap border-r border-slate-300 font-medium text-slate-700">{formatDateForProgrammeHeader(date)}</td>
-                      <td className="px-3 py-2 whitespace-nowrap border-r border-slate-300 text-slate-600 text-center">Breakfast</td>
-                      <td className={`px-3 py-2 border-r border-slate-300 text-slate-600 text-center ${isArrivalDay && morningActivity !== '-' ? 'text-green-700 font-semibold' : ''}`}>{morningActivity}</td>
-                      <td className="px-3 py-2 whitespace-nowrap border-r border-slate-300 text-slate-600 text-center">Lunch</td>
-                      <td className={`px-3 py-2 border-r border-slate-300 text-slate-600 text-center ${isDepartureDay && afternoonActivity !== '-' ? 'text-red-700 font-semibold' : ''}`}>{afternoonActivity}</td>
-                      <td className="px-3 py-2 whitespace-nowrap border-r border-slate-300 text-slate-600 text-center">Dinner</td>
-                      <td className="px-3 py-2 text-slate-600 text-center">{eveningActivity}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Airport
+              </label>
+              <input
+                type="text"
+                value={flightDetails.airport}
+                onChange={(e) => setFlightDetails(prev => ({ ...prev, airport: e.target.value }))}
+                placeholder="e.g., Heathrow (LHR)"
+                className="block w-full rounded-md border-slate-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm"
+                required
+              />
+            </div>
           </div>
-        ) : (
-          <p className="text-slate-500">Programme dates not available for this group, or group arrival/departure not set.</p>
-        )}
+
+          {submitError && (
+            <div className="text-red-600 text-sm mt-2">
+              {submitError}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Flight Details'}
+            </button>
+          </div>
+        </form>
+
+        {/* Display current flight details */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-50 p-4 rounded-lg">
+            <h4 className="font-medium text-slate-700 mb-2">Arrival Flight</h4>
+            <p className="text-sm text-slate-600">
+              Time: {groupInfo?.flightArrivalTime || 'Not set'}<br />
+              Flight: {groupInfo?.flightArrivalCode || 'Not set'}<br />
+              Airport: {groupInfo?.flightArrivalAirport || 'Not set'}
+            </p>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-lg">
+            <h4 className="font-medium text-slate-700 mb-2">Departure Flight</h4>
+            <p className="text-sm text-slate-600">
+              Time: {groupInfo?.flightDepartureTime || 'Not set'}<br />
+              Flight: {groupInfo?.flightDepartureCode || 'Not set'}<br />
+              Airport: {groupInfo?.flightDepartureAirport || 'Not set'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Programme Link */}
+      <div className="bg-white shadow-lg rounded-xl p-4 sm:p-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-semibold text-slate-700">Programme</h3>
+          <Link 
+            to={`/dashboard/groups/${groupId}/programme`}
+            className="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-md shadow-sm transition-colors"
+          >
+            View Full Programme
+          </Link>
+        </div>
+        <p className="text-sm text-slate-500 mt-2">
+          View the complete programme schedule for this group, including all activities, classes, and meals.
+        </p>
       </div>
     </div>
   );
