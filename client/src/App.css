@@ -1,0 +1,446 @@
+#root {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Sales Grid Styles */
+.sales-grid-container {
+  display: flex;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  position: relative;
+}
+
+.sales-grid-frozen {
+  flex-shrink: 0;
+  background: white;
+  border-right: 2px solid #3b82f6;
+  z-index: 10;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.sales-grid-frozen table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.sales-grid-scrollable {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: white;
+  position: relative;
+}
+
+.sales-grid-scrollable table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+/* Ensure consistent row heights between frozen and scrollable sections */
+.sales-grid-frozen tbody tr,
+.sales-grid-scrollable tbody tr {
+  height: 3.5rem;
+  min-height: 3.5rem;
+  max-height: 3.5rem;
+}
+
+.sales-grid-frozen thead tr,
+.sales-grid-scrollable thead tr {
+  height: 3rem;
+  min-height: 3rem;
+  max-height: 3rem;
+}
+
+/* Fix header alignment - ensure single line height and prevent wrapping */
+.sales-grid-frozen thead th,
+.sales-grid-scrollable thead th {
+  height: 3rem;
+  line-height: 1.2;
+  vertical-align: middle;
+  white-space: nowrap;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  position: relative;
+}
+
+/* Ensure data cells have consistent height and alignment */
+.sales-grid-frozen tbody td,
+.sales-grid-scrollable tbody td {
+  height: 3.5rem;
+  min-height: 3.5rem;
+  max-height: 3.5rem;
+  vertical-align: middle;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Ensure tbody elements have the same structure */
+.sales-grid-frozen tbody,
+.sales-grid-scrollable tbody {
+  display: table-row-group;
+}
+
+/* Force consistent table layout */
+.sales-grid-frozen table,
+.sales-grid-scrollable table {
+  table-layout: fixed;
+}
+
+/* Ensure proper row rendering for all rows */
+.sales-grid-frozen tbody tr:nth-child(n),
+.sales-grid-scrollable tbody tr:nth-child(n) {
+  display: table-row;
+  visibility: visible;
+}
+
+/* Custom scrollbar for the scrollable section */
+.sales-grid-scrollable::-webkit-scrollbar {
+  height: 8px;
+}
+
+.sales-grid-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.sales-grid-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.sales-grid-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sales-grid-container {
+    flex-direction: column;
+  }
+  
+  .sales-grid-frozen {
+    border-right: none;
+    border-bottom: 2px solid #3b82f6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .sales-grid-scrollable {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  
+  /* Adjust header text size on mobile to prevent wrapping */
+  .sales-grid-frozen thead th,
+  .sales-grid-scrollable thead th {
+    font-size: 0.625rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* Print styles for the sales grid */
+@media print {
+  .sales-grid-container {
+    display: block;
+  }
+  
+  .sales-grid-frozen,
+  .sales-grid-scrollable {
+    display: block;
+    overflow: visible;
+  }
+  
+  .sales-grid-scrollable {
+    page-break-inside: avoid;
+  }
+}
+
+/* Sales Grid Sticky Column Positioning - Fixed for proper rendering */
+.sticky-col-1 { 
+  left: 0rem; 
+  min-width: 5rem;
+  max-width: 5rem;
+  width: 5rem !important;
+  position: sticky !important;
+  z-index: 20 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-2 { 
+  left: 5rem; 
+  min-width: 12rem;
+  max-width: 12rem;
+  width: 12rem !important;
+  position: sticky !important;
+  z-index: 19 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-3 { 
+  left: 17rem; 
+  min-width: 9rem;
+  max-width: 9rem;
+  width: 9rem !important;
+  position: sticky !important;
+  z-index: 18 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-4 { 
+  left: 26rem; 
+  min-width: 9rem;
+  max-width: 9rem;
+  width: 9rem !important;
+  position: sticky !important;
+  z-index: 17 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-5 { 
+  left: 35rem; 
+  min-width: 6rem;
+  max-width: 6rem;
+  width: 6rem !important;
+  position: sticky !important;
+  z-index: 16 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-6 { 
+  left: 41rem; 
+  min-width: 6rem;
+  max-width: 6rem;
+  width: 6rem !important;
+  position: sticky !important;
+  z-index: 15 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-7 { 
+  left: 47rem; 
+  min-width: 5rem;
+  max-width: 5rem;
+  width: 5rem !important;
+  position: sticky !important;
+  z-index: 14 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-col-8 { 
+  left: 52rem; 
+  min-width: 5rem;
+  max-width: 5rem;
+  width: 5rem !important;
+  position: sticky !important;
+  z-index: 13 !important;
+  background-color: inherit !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure sticky columns have proper widths - Updated */
+.w-col-1 { 
+  width: 5rem !important; 
+  min-width: 5rem !important;
+  max-width: 5rem !important;
+}
+
+.w-col-2 { 
+  width: 12rem !important; 
+  min-width: 12rem !important;
+  max-width: 12rem !important;
+}
+
+.w-col-3 { 
+  width: 9rem !important; 
+  min-width: 9rem !important;
+  max-width: 9rem !important;
+}
+
+.w-col-4 { 
+  width: 9rem !important; 
+  min-width: 9rem !important;
+  max-width: 9rem !important;
+}
+
+.w-col-5 { 
+  width: 6rem !important; 
+  min-width: 6rem !important;
+  max-width: 6rem !important;
+}
+
+.w-col-6 { 
+  width: 6rem !important; 
+  min-width: 6rem !important;
+  max-width: 6rem !important;
+}
+
+.w-col-7 { 
+  width: 5rem !important; 
+  min-width: 5rem !important;
+  max-width: 5rem !important;
+}
+
+.w-col-8 { 
+  width: 5rem !important; 
+  min-width: 5rem !important;
+  max-width: 5rem !important;
+}
+
+/* Additional fixes for table rendering */
+.sales-grid-table {
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+/* Header styling - allow text wrapping and ensure consistent height */
+.sales-grid-table th {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  border-right: 1px solid #e2e8f0 !important;
+  padding: 0.75rem 0.5rem !important;
+  height: auto !important;
+  min-height: 3rem !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  word-wrap: break-word !important;
+  hyphens: auto !important;
+}
+
+/* Data cell styling - center aligned with proper overflow handling */
+.sales-grid-table td {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  border-right: 1px solid #e2e8f0 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  padding: 0.75rem 0.5rem !important;
+}
+
+/* Special styling for date column headers - ensure they have adequate width */
+.sales-grid-table th:not(.sticky-col-1):not(.sticky-col-2):not(.sticky-col-3):not(.sticky-col-4):not(.sticky-col-5):not(.sticky-col-6):not(.sticky-col-7):not(.sticky-col-8) {
+  min-width: 5rem !important;
+  width: 5rem !important;
+  max-width: 5rem !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.1 !important;
+}
+
+/* Special styling for date column data cells */
+.sales-grid-table td:not(.sticky-col-1):not(.sticky-col-2):not(.sticky-col-3):not(.sticky-col-4):not(.sticky-col-5):not(.sticky-col-6):not(.sticky-col-7):not(.sticky-col-8) {
+  min-width: 5rem !important;
+  width: 5rem !important;
+  max-width: 5rem !important;
+}
+
+/* Center align content within editable cells when in display mode */
+.sales-grid-table td .cursor-pointer {
+  text-align: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 24px !important;
+}
+
+/* Ensure input fields in edit mode are properly styled but don't override center alignment for display */
+.sales-grid-table td input[type="text"],
+.sales-grid-table td input[type="number"],
+.sales-grid-table td input[type="date"] {
+  text-align: center !important;
+  width: 100% !important;
+}
+
+/* Center align numeric values and badges */
+.sales-grid-table td .inline-flex {
+  margin: 0 auto !important;
+}
+
+/* Ensure proper background inheritance for sticky cells */
+.sales-grid-table .sticky-col-1.bg-inherit,
+.sales-grid-table .sticky-col-2.bg-inherit,
+.sales-grid-table .sticky-col-3.bg-inherit,
+.sales-grid-table .sticky-col-4.bg-inherit,
+.sales-grid-table .sticky-col-5.bg-inherit,
+.sales-grid-table .sticky-col-6.bg-inherit,
+.sales-grid-table .sticky-col-7.bg-inherit,
+.sales-grid-table .sticky-col-8.bg-inherit {
+  background-color: inherit !important;
+}
+
+.sales-grid-table .sticky-col-1.bg-slate-50,
+.sales-grid-table .sticky-col-2.bg-slate-50,
+.sales-grid-table .sticky-col-3.bg-slate-50,
+.sales-grid-table .sticky-col-4.bg-slate-50,
+.sales-grid-table .sticky-col-5.bg-slate-50,
+.sales-grid-table .sticky-col-6.bg-slate-50,
+.sales-grid-table .sticky-col-7.bg-slate-50,
+.sales-grid-table .sticky-col-8.bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+.sales-grid-table .sticky-col-1.bg-blue-100,
+.sales-grid-table .sticky-col-2.bg-blue-100,
+.sales-grid-table .sticky-col-3.bg-blue-100,
+.sales-grid-table .sticky-col-4.bg-blue-100,
+.sales-grid-table .sticky-col-5.bg-blue-100,
+.sales-grid-table .sticky-col-6.bg-blue-100,
+.sales-grid-table .sticky-col-7.bg-blue-100,
+.sales-grid-table .sticky-col-8.bg-blue-100 {
+  background-color: #dbeafe !important;
+}
