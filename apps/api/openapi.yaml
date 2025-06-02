@@ -1,0 +1,1329 @@
+openapi: 3.0.3
+info:
+  title: MLI Operations Management System API
+  version: 1.0.0
+  description: |
+    API for managing operations in the MLI Operations Management System, including groups, participants, 
+    activities, flights, transfers, staff, and programme scheduling.
+  contact:
+    name: API Support
+    url: https://example.com/support
+    email: support@example.com
+  license:
+    name: ISC
+    url: https://opensource.org/licenses/ISC
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.yourdomain.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /:
+    get:
+      summary: Health Check
+      description: Simple health check endpoint to verify server is running
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Server is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Server is running."
+
+  /login:
+    post:
+      summary: User Authentication
+      description: Authenticate user with email and password
+      tags:
+        - Authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "user@example.com"
+              password: "password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/groups:
+    get:
+      summary: Get All Groups
+      description: Retrieve all groups with their associated flights and details
+      tags:
+        - Groups
+      responses:
+        '200':
+          description: List of groups retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Group'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create New Group
+      description: Create a new group with the provided details
+      tags:
+        - Groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGroupRequest'
+      responses:
+        '201':
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Group created successfully."
+                  group:
+                    $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Group already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/groups/import:
+    post:
+      summary: Import Multiple Groups
+      description: Bulk import groups from an array of group data
+      tags:
+        - Groups
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateGroupRequest'
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Import finished. Imported 5 groups."
+                  successfullyImportedCount:
+                    type: integer
+                    example: 5
+                  totalProcessed:
+                    type: integer
+                    example: 6
+                  skippedCount:
+                    type: integer
+                    example: 1
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        groupName:
+                          type: string
+                        error:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/groups/{groupId}:
+    get:
+      summary: Get Group by ID
+      description: Retrieve a specific group by its ID with associated flights
+      tags:
+        - Groups
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the group
+          example: 123
+      responses:
+        '200':
+          description: Group retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  group:
+                    $ref: '#/components/schemas/Group'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update Group
+      description: Update an existing group's details
+      tags:
+        - Groups
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGroupRequest'
+      responses:
+        '200':
+          description: Group updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Group updated successfully."
+                  group:
+                    $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Group name conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete Group
+      description: Delete a group and its associated flight relationships
+      tags:
+        - Groups
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the group
+      responses:
+        '200':
+          description: Group deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Group "Sample Group" deleted successfully.'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/groups/{groupId}/flights:
+    post:
+      summary: Add Flight to Group
+      description: Associate a flight with a group
+      tags:
+        - Groups
+        - Flights
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                flightId:
+                  type: integer
+                  description: ID of the flight to associate
+                  example: 456
+      responses:
+        '201':
+          description: Flight added to group successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/groups/{groupId}/flights/{flightId}:
+    delete:
+      summary: Remove Flight from Group
+      description: Remove flight association from a group
+      tags:
+        - Groups
+        - Flights
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the group
+        - name: flightId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the flight
+      responses:
+        '200':
+          description: Flight removed from group successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/programme-slot:
+    post:
+      summary: Save Programme Slot
+      description: Create or update a programme slot for a group
+      tags:
+        - Programme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgrammeSlotRequest'
+      responses:
+        '201':
+          description: Programme slot saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Programme slot saved."
+                  slot:
+                    $ref: '#/components/schemas/ProgrammeSlot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/groups/{groupId}/programme:
+    get:
+      summary: Get Group Programme
+      description: Retrieve programme schedule for a specific group
+      tags:
+        - Programme
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Unique identifier for the group
+        - name: viewType
+          in: query
+          schema:
+            type: string
+            enum: [classes, activities]
+            default: classes
+          description: Type of programme view
+      responses:
+        '200':
+          description: Group programme retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  programme:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    example:
+                      "2024-01-15-Morning": "English Class"
+                      "2024-01-15-Afternoon": "Sports Activity"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/activities:
+    get:
+      summary: Get All Activities
+      description: Retrieve all available activities
+      tags:
+        - Activities
+      responses:
+        '200':
+          description: Activities retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  activities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create Activity
+      description: Create a new activity
+      tags:
+        - Activities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateActivityRequest'
+      responses:
+        '201':
+          description: Activity created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Activity created successfully."
+                  activity:
+                    $ref: '#/components/schemas/Activity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/flights:
+    get:
+      summary: Get All Flights
+      description: Retrieve all flights ordered by date and time
+      tags:
+        - Flights
+      responses:
+        '200':
+          description: Flights retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  flights:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Flight'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create Flight
+      description: Create a new flight
+      tags:
+        - Flights
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFlightRequest'
+      responses:
+        '201':
+          description: Flight created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Flight created successfully."
+                  flight:
+                    $ref: '#/components/schemas/Flight'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/participants:
+    get:
+      summary: Get All Participants
+      description: Retrieve all participants with optional filtering and pagination
+      tags:
+        - Participants
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: Number of participants per page
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: last_name
+          description: Field to sort by
+      responses:
+        '200':
+          description: Participants retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  participants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Participant'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create Participant
+      description: Create a new participant
+      tags:
+        - Participants
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateParticipantRequest'
+      responses:
+        '201':
+          description: Participant created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Participant created successfully."
+                  participant:
+                    $ref: '#/components/schemas/Participant'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/agencies:
+    get:
+      summary: Get All Agencies
+      description: Retrieve all agencies
+      tags:
+        - Agencies
+      responses:
+        '200':
+          description: Agencies retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  agencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agency'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/centres:
+    get:
+      summary: Get All Centres
+      description: Retrieve all centres
+      tags:
+        - Centres
+      responses:
+        '200':
+          description: Centres retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  centres:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Centre'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create Centre
+      description: Create a new centre
+      tags:
+        - Centres
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCentreRequest'
+      responses:
+        '201':
+          description: Centre created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Centre created successfully."
+                  centre:
+                    $ref: '#/components/schemas/Centre'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/centres/occupancy:
+    get:
+      summary: Get Centre Occupancy Data
+      description: Retrieve occupancy data for all centres over the last 30 days
+      tags:
+        - Centres
+      responses:
+        '200':
+          description: Centre occupancy data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  occupancy:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          students:
+                            type: integer
+                          leaders:
+                            type: integer
+                    example:
+                      "Brighton Centre":
+                        "2024-01-15":
+                          students: 25
+                          leaders: 3
+                        "2024-01-16":
+                          students: 30
+                          leaders: 4
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/staff:
+    get:
+      summary: Get All Staff
+      description: Retrieve all staff members
+      tags:
+        - Staff
+      responses:
+        '200':
+          description: Staff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  staff:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Staff'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Create Staff
+      description: Create a new staff member
+      tags:
+        - Staff
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStaffRequest'
+      responses:
+        '201':
+          description: Staff created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Staff created successfully."
+                  staff:
+                    $ref: '#/components/schemas/Staff'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token authentication
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API Key authentication
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          description: User's password
+          example: "password123"
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Login successful"
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            email:
+              type: string
+              example: "user@example.com"
+
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the group
+          example: 123
+        groupName:
+          type: string
+          description: Name of the group
+          example: "Brighton Summer Program 2024"
+        agency:
+          type: string
+          nullable: true
+          description: Agency name
+          example: "Education First"
+        arrivalDate:
+          type: string
+          format: date
+          description: Group arrival date
+          example: "2024-07-15"
+        departureDate:
+          type: string
+          format: date
+          description: Group departure date
+          example: "2024-07-29"
+        studentAllocation:
+          type: integer
+          nullable: true
+          description: Number of students allocated
+          example: 25
+        leaderAllocation:
+          type: integer
+          nullable: true
+          description: Number of leaders allocated
+          example: 3
+        studentBookings:
+          type: integer
+          nullable: true
+          description: Number of student bookings
+          example: 25
+        leaderBookings:
+          type: integer
+          nullable: true
+          description: Number of leader bookings
+          example: 3
+        centre:
+          type: string
+          nullable: true
+          description: Centre location
+          example: "Brighton Centre"
+        arrivalFlights:
+          type: array
+          items:
+            $ref: '#/components/schemas/Flight'
+          description: Associated arrival flights
+        departureFlights:
+          type: array
+          items:
+            $ref: '#/components/schemas/Flight'
+          description: Associated departure flights
+
+    CreateGroupRequest:
+      type: object
+      required:
+        - groupName
+        - arrivalDate
+        - departureDate
+      properties:
+        groupName:
+          type: string
+          description: Name of the group
+          example: "Brighton Summer Program 2024"
+        agency:
+          type: string
+          nullable: true
+          description: Agency name
+          example: "Education First"
+        arrivalDate:
+          type: string
+          format: date
+          description: Group arrival date
+          example: "2024-07-15"
+        departureDate:
+          type: string
+          format: date
+          description: Group departure date
+          example: "2024-07-29"
+        studentAllocation:
+          type: integer
+          nullable: true
+          description: Number of students allocated
+          example: 25
+        leaderAllocation:
+          type: integer
+          nullable: true
+          description: Number of leaders allocated
+          example: 3
+        studentBookings:
+          type: integer
+          nullable: true
+          description: Number of student bookings
+          example: 25
+        leaderBookings:
+          type: integer
+          nullable: true
+          description: Number of leader bookings
+          example: 3
+        centre:
+          type: string
+          nullable: true
+          description: Centre location
+          example: "Brighton Centre"
+
+    ProgrammeSlotRequest:
+      type: object
+      required:
+        - groupId
+        - date
+        - slotType
+        - viewType
+      properties:
+        groupId:
+          type: integer
+          description: ID of the group
+          example: 123
+        date:
+          type: string
+          format: date
+          description: Date of the programme slot
+          example: "2024-07-15"
+        slotType:
+          type: string
+          description: Type of slot (Morning, Afternoon, Evening)
+          example: "Morning"
+        description:
+          type: string
+          nullable: true
+          description: Description of the activity/class
+          example: "English Language Class"
+        viewType:
+          type: string
+          enum: [classes, activities]
+          description: Type of programme view
+          example: "classes"
+
+    ProgrammeSlot:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        group_id:
+          type: integer
+          example: 123
+        slot_date:
+          type: string
+          format: date
+          example: "2024-07-15"
+        slot_type:
+          type: string
+          example: "Morning"
+        description:
+          type: string
+          nullable: true
+          example: "English Language Class"
+        view_type:
+          type: string
+          example: "classes"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Football Training"
+        description:
+          type: string
+          nullable: true
+          example: "Professional football training session"
+        category:
+          type: string
+          nullable: true
+          example: "Sports"
+
+    CreateActivityRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the activity
+          example: "Football Training"
+        description:
+          type: string
+          nullable: true
+          description: Description of the activity
+          example: "Professional football training session"
+        category:
+          type: string
+          nullable: true
+          description: Category of the activity
+          example: "Sports"
+
+    Flight:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        flight_code:
+          type: string
+          example: "BA123"
+        flight_type:
+          type: string
+          enum: [arrival, departure]
+          example: "arrival"
+        flight_date:
+          type: string
+          format: date
+          example: "2024-07-15"
+        flight_time:
+          type: string
+          format: time
+          example: "14:30:00"
+
+    CreateFlightRequest:
+      type: object
+      required:
+        - flight_code
+        - flight_type
+        - flight_date
+        - flight_time
+      properties:
+        flight_code:
+          type: string
+          description: Flight code/number
+          example: "BA123"
+        flight_type:
+          type: string
+          enum: [arrival, departure]
+          description: Type of flight
+          example: "arrival"
+        flight_date:
+          type: string
+          format: date
+          description: Flight date
+          example: "2024-07-15"
+        flight_time:
+          type: string
+          format: time
+          description: Flight time
+          example: "14:30:00"
+
+    Participant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        participant_type:
+          type: string
+          enum: [student, leader]
+          example: "student"
+        group_id:
+          type: integer
+          nullable: true
+          example: 123
+
+    CreateParticipantRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - participant_type
+      properties:
+        first_name:
+          type: string
+          description: Participant's first name
+          example: "John"
+        last_name:
+          type: string
+          description: Participant's last name
+          example: "Doe"
+        participant_type:
+          type: string
+          enum: [student, leader]
+          description: Type of participant
+          example: "student"
+        group_id:
+          type: integer
+          nullable: true
+          description: ID of associated group
+          example: 123
+
+    Agency:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Education First"
+
+    Centre:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Brighton Centre"
+        location:
+          type: string
+          nullable: true
+          example: "Brighton, UK"
+        capacity:
+          type: integer
+          nullable: true
+          example: 100
+
+    CreateCentreRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the centre
+          example: "Brighton Centre"
+        location:
+          type: string
+          nullable: true
+          description: Location of the centre
+          example: "Brighton, UK"
+        capacity:
+          type: integer
+          nullable: true
+          description: Maximum capacity of the centre
+          example: 100
+
+    Staff:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        first_name:
+          type: string
+          example: "Jane"
+        last_name:
+          type: string
+          example: "Smith"
+        position:
+          type: string
+          nullable: true
+          example: "Activity Coordinator"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "jane.smith@example.com"
+
+    CreateStaffRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+      properties:
+        first_name:
+          type: string
+          description: Staff member's first name
+          example: "Jane"
+        last_name:
+          type: string
+          description: Staff member's last name
+          example: "Smith"
+        position:
+          type: string
+          nullable: true
+          description: Staff member's position
+          example: "Activity Coordinator"
+        email:
+          type: string
+          format: email
+          nullable: true
+          description: Staff member's email address
+          example: "jane.smith@example.com"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "An error occurred"
+
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Missing required fields"
+
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Invalid email or password"
+
+    NotFound:
+      description: Not Found - Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Resource not found"
+
+    InternalServerError:
+      description: Internal Server Error - Something went wrong
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "An internal server error occurred"
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Groups
+    description: Group management operations
+  - name: Programme
+    description: Programme scheduling and management
+  - name: Activities
+    description: Activity management operations
+  - name: Flights
+    description: Flight management operations
+  - name: Participants
+    description: Participant management operations
+  - name: Transfers
+    description: Transfer management operations
+  - name: Agencies
+    description: Agency information operations
+  - name: Centres
+    description: Centre management operations
+  - name: Staff
+    description: Staff management operations 
